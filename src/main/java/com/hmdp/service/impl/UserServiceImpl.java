@@ -44,6 +44,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result login(LoginFormDTO loginForm, HttpSession session) {
+        log.debug("进入login方法");
         String phone = loginForm.getPhone();
         // 1.校验手机号
         if (RegexUtils.isPhoneInvalid(phone)) {
@@ -61,6 +62,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (user == null) {
             user = createUserWithPhone(phone);
         }
+        log.debug("user: " + user);
         // 4.保存用户到session
         session.setAttribute("user", BeanUtil.copyProperties(user, UserDTO.class));
         return Result.ok(user);
@@ -71,6 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setPhone(phone);
         user.setPassword("123456");
         user.setNickName(SystemConstants.USER_NICK_NAME_PREFIX + RandomUtil.randomString(6));
+        this.save(user);
         return user;
     }
 }
