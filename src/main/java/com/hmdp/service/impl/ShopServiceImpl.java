@@ -1,10 +1,17 @@
 package com.hmdp.service.impl;
 
+import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.utils.RedisClient;
+import com.hmdp.utils.RedisConstants;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -17,4 +24,30 @@ import org.springframework.stereotype.Service;
 @Service
 public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IShopService {
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private RedisClient redisClient;
+
+    @Override
+    public Shop queryShopById(Long id) throws Exception {
+        // 缓存穿透
+        Shop shop = redisClient.cachePenetration(RedisConstants.CACHE_SHOP_KEY, id, Shop.class, this::getById, RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
+        if (shop == null) {
+            throw new Exception("店铺为空");
+        }
+        return shop;
+    }
+
+    @Override
+    public Result updateShop(Shop shop) {
+        if (shop.getId() == null) {
+            return Result.fail("店铺id不能为空");
+        }
+        // 1. 操作数据库
+        this.updateById(shop);
+        // 2. 删除缓存
+        stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY + shop.getId());
+        return Result.ok();
+    }
 }
